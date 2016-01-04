@@ -32,47 +32,47 @@ $app->get('/test', function(){
 
 $app->post('/domaincheck', function() use($reseller_api, $app) {
 
-	$response_slim = $app->response();
-	$response_slim['Content-Type'] = 'application/json';
-
+	$response = $app->response();
+	$response['Content-Type'] = 'application/json';
+	
 	$dom_name = $app->request->post('names');
 	
 	$request = array(
 		'DomainNames' => $dom_name
 	);
-
+	
 	//send the request
-	$response = $reseller_api->call('DomainCheck', $request);
-
-	if (!is_soap_fault($response)) {
+	$resp = $reseller_api->call('DomainCheck', $request);
+	
+	if (!is_soap_fault($resp)) {
 
 		//Successfully checked the availability of the domains
-		if (isset($response->APIResponse->AvailabilityList)) {
+		if (isset($resp->APIResponse->AvailabilityList)) {
 			$arr_av_data = array();
-			foreach($response->APIResponse->AvailabilityList as $list){
+			foreach($resp->APIResponse->AvailabilityList as $list){
 				if($list->Available){
 					array_push($arr_av_data, $list->Item);
 				}
 			}
 			#print implode($arr_av_data,',');
-			$response_slim->body(json_encode($arr_av_data));
-			return $response_slim;
-		} else {
-			echo 'The following error(s) occurred:<br />';
-
-			foreach ($response->APIResponse->Errors as $error) {
-				echo $error->Item . ' - ' . $error->Message . '<br />';
-			}
+			$response->body(json_encode($arr_av_data));
+			return $response;
+		} 
+		else {
+			$response->body(json_encode($resp->APIResponse->Errors));
+			echo $response;
 		}
 	} else {
-
 		//SoapFault
-		echo 'Error occurred while sending request: ' . $response->getMessage();
+		$response->body(json_encode($resp->getMessage()));
+		return $response;
 	}
 });
 
 $app->post('/registeruser', function() use ($app, $reseller_api) {
 
+	$response = $app->response();
+	$response['Content-Type'] = 'application/json';
 
 	$data = $app->request->post();
 
@@ -91,84 +91,92 @@ $app->post('/registeruser', function() use ($app, $reseller_api) {
 		'AccountType' 	=> $data['type']
 	);
 
-	$response = $reseller_api->call('ContactCreate', $request);
+	$resp = $reseller_api->call('ContactCreate', $request);
 
-	if (!is_soap_fault($response)) {
-
-	//Successfully created the contact
-	if (isset($response->APIResponse->ContactDetails)) {
-		echo 'Contact ID: ' . $response->APIResponse->ContactDetails->ContactIdentifier;
-	} else {
-		echo 'The following error(s) occurred:<br />';
-
-		foreach ($response->APIResponse->Errors as $error) {
-			echo $error->Item . ' - ' . $error->Message . '<br />';
+	if (!is_soap_fault($resp)) {
+		//Successfully created the contact
+		if (isset($resp->APIResponse->ContactDetails)) {
+			$response->body(json_encode($resp->APIResponse->ContactDetails->ContactIdentifier));
+			return $response;
+		} else {
+			$response->body(json_encode($resp->APIResponse->Errors));
+			return $response;
 		}
-	}
-	} else {
-
-		//SoapFault
-		echo 'Error occurred while sending request: ' . $response->getMessage();
+	} 
+	else {
+		// Soap Fault 
+		$response->body(json_encode($resp->getMessage));
+		return $response;
 	}
 });
 
 $app->post('/contactinfo', function() use ($app, $reseller_api) {
-	//construct the request data
 
+	$response = $app->response();
+	$response['Content-Type'] = 'application/json';
+
+	//construct the request data
 	$contact_id = $app->request->post('contact');
 
 	$request = array(
 		'ContactIdentifier' => $contact_id#'C-000982915-SN'
 	);
+
 	//send the request
-	$response = $reseller_api->call('ContactInfo', $request);
+	$resp = $reseller_api->call('ContactInfo', $request);
 
-	if (!is_soap_fault($response)) {
-
+	if (!is_soap_fault($resp)) {
 		//Successfully created the domain
-		if (isset($response->APIResponse->ContactDetails)) {
-			echo 'Contacts name is ' . $response->APIResponse->ContactDetails->FirstName . ' ' . $response->APIResponse->ContactDetails->LastName;
-		} else {
-			echo 'The following error(s) occurred:<br />';
-
-			foreach ($response->APIResponse->Errors as $error) {
-				echo $error->Item . ' - ' . $error->Message . '<br />';
-			}
+		if (isset($resp->APIResponse->ContactDetails)) {
+			$response->body(json_encode($resp->APIResponse->ContactDetails));
+			return $response;
+		} 
+		else {
+			$response->body(json_encode($resp->APIResponse->Errors));
+			return $response;
 		}
-	} else {
-
+	} 
+	else {
 		//SoapFault
-		echo 'Error occurred while sending request: ' . $response->getMessage();
+		$response->body(json_encode($resp->APIResponse->getMessage()));
+		return $response;
 	}
 });
 
 $app->post('/domaininfo', function() use ($app, $reseller_api){
+
+	$response = $app->response();
+	$response['Content-Type'] = 'application/json';
+
 	$dom_name = $app->request->post('domain_name');
 
 	$request = array(
 		'DomainName' => $dom_name
 	);
 
-	$response = $reseller_api->call('DomainInfo', $request);
+	$resp = $reseller_api->call('DomainInfo', $request);
 
-	if (!is_soap_fault($response)){
+	if (!is_soap_fault($resp)){
 	//Successfully created the domain
-		if (isset($response->APIResponse->DomainDetails)) {
-			echo $response->APIResponse->DomainDetails->DomainName . ' expires ' . $response->APIResponse->DomainDetails->Expiry;
-		} else {
-			echo 'The following error(s) occurred:<br />';
-
-			foreach ($response->APIResponse->Errors as $error) {
-				echo $error->Item . ' - ' . $error->Message . '<br />';
-			}
+		if (isset($resp->APIResponse->DomainDetails)) {
+			$response->body(json_encode($resp->APIResponse->DomainDetails));
+			echo $response;
+		} 
+		else {
+			$response->body(json_encode($resp->APIResponse->Errors));
+			return $response;
 		}
 	} else {
 		//SoapFault
-		echo 'Error occurred while sending request: ' . $response->getMessage();
+		$response->body(json_encode($resp->getMessage()));
+		return $response;
 	}
 });
 
 $app->post('/domaincreate', function() use ($app, $reseller_api) {
+
+	$response = $app->response();
+	$response['Content-Type'] = 'application/json';
 
 	$data = $app->request->post();
 
@@ -178,28 +186,58 @@ $app->post('/domaincreate', function() use ($app, $reseller_api) {
 		'AdminContactIdentifier' => $data['admin_contact_id'],
 		'BillingContactIdentifier' => $data['billing_contact_id'],
 		'TechContactIdentifier' => $data['tech_contact_id'],
-		'RegistrationPeriod' => 1
+		'RegistrationPeriod' => 2
 	);
 
 	//send the request
-	$response = $reseller_api->call('DomainCreate', $request);
+	$resp = $reseller_api->call('DomainCreate', $request);
 
 	if (!is_soap_fault($response)) {
 
 		//Successfully created the domain
-		if (isset($response->APIResponse->DomainDetails)) {
-			echo 'Domain successfully created';
-		} else {
-			echo 'The following error(s) occurred:<br />';
-
-			foreach ($response->APIResponse->Errors as $error) {
-				echo $error->Item . ' - ' . $error->Message . '<br />';
-			}
+		if (isset($resp->APIResponse->DomainDetails)) {
+			$response->body(json_encode($resp->APIResponse->DomainDetails));
+			return $response;
+		} 
+		else {
+			$response->body(json_encode($resp->APIResponse->Errors));
+			return $response;
 		}
-	} else {
+	}
+	else {
+		// Soap Fault
+		$response->body(json_encode($resp->getMessage()));
+		return $response;
+	}
+});
 
-		//SoapFault
-		echo 'Error occurred while sending request: ' . $response->getMessage();
+$app->post('/createcloneregistrant', function() use ($app, $reseller_api){
+
+	$response = $app->response();
+	$response['Content-Type'] = 'application/json';
+
+	$data = $app->request->post();
+
+	$request = array('ContactIdentifier' => $data['c_id']);
+
+	$resp = $reseller_api->call('ContactCloneToRegistrant', $request);
+
+	//$response->body(json_encode($resp));
+	//return $response;
+
+	if(!is_soap_fault($response)){
+		if(isset($resp->APIResponse->ContactDetails)){
+			$response->body(json_encode($resp->APIResponse->ContactDetails->ContactIdentifier));
+			return $response;
+		}
+		else{
+			$response->body(json_encode($resp->APIResponse->Errors));
+			return $response;
+		}
+	}
+	else{
+		$response->body(json_encode($resp->getMessage()));
+		return $response;
 	}
 });
 
